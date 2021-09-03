@@ -1,3 +1,7 @@
+REQUIREMENTS_TXT ?= requirements.txt requirements-dev.txt
+.DEFAULT_GOAL := help
+
+.PHONY: help dev test
 include Makefile.venv
 Makefile.venv:
 	curl \
@@ -7,28 +11,31 @@ Makefile.venv:
 		| sha256sum --check - \
 		&& mv Makefile.fetched Makefile.venv
 
-all: pip dev
+help:	# Help for the Makefile
+	@egrep -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: dev
-dev: venv
+dev: venv  ## Create the virtualenv with all the requirements installed
 
-clean: clean-venv
+docs: build
+	cp README.rst docs/readme.rst
+	cp Changelog docs/changelog.rst
+	tox -edocs
+
+clean: clean-venv  ## Clean out any build artifacts to start over
 	rm -rf dist/*
 
-.PHONY: test
-test: dev
+test: dev  ## Run all the tox tests
 	tox -p all
 
-build: test
+build: test  ## Make the build artifact prior to doing an upload
 	$(VENV)/python3 setup.py sdist bdist_wheel
 	$(VENV)/twine check dist/*
 
-upload: build
-	$(VENV)/twine upload dist/*a
+upload: build  ## Upload a new version of the plugin
+	$(VENV)/twine upload dist/*
 
-check: dev # Code format check with isort and black
-	tox -efmt-check
+check: dev ## Code format check with tox and pep8
 	tox -epep8
 
-fix: dev # fixes code formatting with isort and black
+fix: dev ## fixes code formatting with gray
 	tox -efmt
