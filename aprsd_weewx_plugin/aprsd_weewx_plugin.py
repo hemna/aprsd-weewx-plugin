@@ -146,7 +146,6 @@ class WeewxMQTTThread(threads.APRSDThread):
         client.subscribe("weather/loop")
 
     def on_message(self, client, userdata, msg):
-        #LOG.info(msg.payload)
         wx_data = json.loads(msg.payload)
         LOG.debug(f"Got WX data {wx_data}")
         mqtt_queue.put(wx_data)
