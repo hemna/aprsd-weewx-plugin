@@ -1,44 +1,26 @@
-#!/usr/bin/env python
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+# implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-"""The setup script."""
+# THIS FILE IS MANAGED BY THE GLOBAL REQUIREMENTS REPO - DO NOT EDIT
+import setuptools
 
-from setuptools import setup, find_packages
+# In python < 2.7.4, a lazy loading of package `pbr` will break
+# setuptools if some other modules registered functions in `atexit`.
+# solution from: http://bugs.python.org/issue15881#msg170215
+try:
+    import multiprocessing  # noqa
+except ImportError:
+    pass
 
-with open('README.rst') as readme_file:
-    readme = readme_file.read()
-
-with open('HISTORY.rst') as history_file:
-    history = history_file.read()
-
-requirements = [ ]
-
-test_requirements = ['pytest>=3', ]
-
-setup(
-    author="Walter A. Boring IV",
-    author_email='waboring@hemna.com',
-    python_requires='>=3.6',
-    classifiers=[
-        'Development Status :: 2 - Pre-Alpha',
-        'Intended Audience :: Developers',
-        'License :: OSI Approved :: Apache Software License',
-        'Natural Language :: English',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
-    ],
-    description="Ham Radio APRSD Weewx plugin for reporting weather from a weewx station",
-    install_requires=requirements,
-    license="Apache Software License 2.0",
-    long_description=readme + '\n\n' + history,
-    include_package_data=True,
-    keywords='aprsd_weewx_plugin',
-    name='aprsd_weewx_plugin',
-    packages=find_packages(include=['aprsd_weewx_plugin', 'aprsd_weewx_plugin.*']),
-    test_suite='tests',
-    tests_require=test_requirements,
-    url='https://github.com/hemna/aprsd_weewx_plugin',
-    version='0.1.0',
-    zip_safe=False,
-)
+setuptools.setup(setup_requires=["pbr"], pbr=True)
