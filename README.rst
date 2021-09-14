@@ -48,7 +48,7 @@ Requirements
 Installation
 ------------
 
-You can install *APRSD Weewx Plugin * via pip_ from PyPI_:
+You can install *APRSD Weewx Plugin* via pip_ from PyPI_:
 
 .. code:: console
 
@@ -72,7 +72,7 @@ License
 -------
 
 Distributed under the terms of the `GNU GPL v3.0 license`_,
-*APRSD Weewx Plugin * is free and open source software.
+*APRSD Weewx Plugin* is free and open source software.
 
 
 Issues
