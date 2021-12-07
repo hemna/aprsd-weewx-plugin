@@ -304,9 +304,9 @@ class WeewxWXAPRSThread(threads.APRSDThread):
 
     def str_or_dots(self, number, length):
         # If parameter is None, fill with dots, otherwise pad with zero
-        #if not number:
-        #    retn_value = "." * length
-        #else:
+        # if not number:
+        #     retn_value = "." * length
+        # else:
         format_type = {"int": "d", "float": ".0f"}[type(number).__name__]
         retn_value = "".join(("%0", str(length), format_type)) % number
 
