@@ -1,9 +1,14 @@
 CHANGES
 =======
 
-* Updated from first repo
+v0.1.3
+------
+
+* Fixed missing entry in requirements.txt
 
 v0.1.2
 ------
 
+* Fixed README.rst formatting
+* Updated from first repo
 * Initial commit
