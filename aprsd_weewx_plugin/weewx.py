@@ -7,7 +7,7 @@ import time
 
 import aprsd.messaging
 import paho.mqtt.client as mqtt
-from aprsd import plugin, threads, trace
+from aprsd import plugin, threads
 
 
 LOG = logging.getLogger("APRSD")
@@ -83,7 +83,6 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
         else:
             LOG.info("WeewxMQTTPlugin not enabled due to missing config.")
 
-    @trace.trace
     def process(self, packet):
         LOG.info("WeewxMQTT Plugin")
         packet.get("from")
@@ -236,7 +235,6 @@ class WeewxWXAPRSThread(threads.APRSDThread):
             )
         self.address = f"{self.callsign}>APRS,TCPIP*:"
 
-    @trace.trace
     def decdeg2dmm_m(self, degrees_decimal):
         is_positive = degrees_decimal >= 0
         degrees_decimal = abs(degrees_decimal)
@@ -295,7 +293,6 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         lon = f"{degrees}{str(minutes)}.{hundredths}{direction}"
         return lon
 
-    @trace.trace
     def get_latlon(self, latitude_str, longitude_str):
         return "{}/{}_".format(
             self.convert_latitude(float(latitude_str)),
