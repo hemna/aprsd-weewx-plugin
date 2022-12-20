@@ -52,11 +52,11 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
         if self.enabled:
             LOG.info("Creating WeewxMQTTThread")
             self.queue = ClearableQueue(maxsize=1)
-            self.wx_queue = queue.Queue(maxsize=2)
+            self.wx_queue = ClearableQueue(maxsize=1)
             mqtt_thread = WeewxMQTTThread(
                 config=self.config,
-                msg_queues=self.queue,
                 wx_queue=self.wx_queue,
+                msg_queue=self.queue,
             )
             threads = [mqtt_thread]
 
@@ -161,10 +161,10 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
 
 
 class WeewxMQTTThread(threads.APRSDThread):
-    def __init__(self, config, msg_queues, wx_queue):
+    def __init__(self, config, wx_queue, msg_queue):
         super().__init__("WeewxMQTTThread")
         self.config = config
-        self.msg_queues = msg_queues
+        self.msg_queue = msg_queue
         self.wx_queue = wx_queue
         self.setup()
 
@@ -201,15 +201,18 @@ class WeewxMQTTThread(threads.APRSDThread):
         wx_data = json.loads(msg.payload)
         LOG.debug(f"Got WX data {wx_data}")
         # Make sure we have only 1 item in the queue
-        if self.msg_queues.qsize() >= 1:
-            self.msg_queues.clear()
-        self.msg_queues.put(wx_data)
+        if self.msg_queue.qsize() >= 1:
+            self.msg_queue.clear()
+        self.msg_queue.put(wx_data)
+        self.wx_queue.clear()
         self.wx_queue.put(wx_data)
 
     def stop(self):
-        LOG.info("Disconnecting from MQTT")
+        LOG.info(__class__.__name__+" Stop")
         self.thread_stop = True
+        LOG.info("Stopping loop")
         self.client.loop_stop()
+        LOG.info("Disconnecting from MQTT")
         self.client.disconnect()
 
     def loop(self):
@@ -225,7 +228,7 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         self.wx_queue = wx_queue
         self.latitude = self.config.get("services.weewx.location.latitude")
         self.longitude = self.config.get("services.weewx.location.longitude")
-        self.callsign = self.config.get("services.weewx.callsign")
+        self.callsign = self.config.get("aprsd.callsign")
         self.last_send = datetime.datetime.now()
 
         if self.latitude and self.longitude:
@@ -233,7 +236,6 @@ class WeewxWXAPRSThread(threads.APRSDThread):
                 float(self.latitude),
                 float(self.longitude),
             )
-        self.address = f"{self.callsign}>APRS,TCPIP*:"
 
     def decdeg2dmm_m(self, degrees_decimal):
         is_positive = degrees_decimal >= 0
@@ -264,12 +266,6 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         minutes = str(det.get("minutes")).zfill(2)
         det.get("seconds")
         hundredths = str(det.get("hundredths")).split(".")[1]
-
-        LOG.debug(
-            f"LAT degress {degrees}  minutes {str(minutes)} "
-            "seconds {seconds} hundredths {hundredths} direction {direction}",
-        )
-
         lat = f"{degrees}{str(minutes)}.{hundredths}{direction}"
         return lat
 
@@ -284,12 +280,6 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         minutes = str(det.get("minutes")).zfill(2)
         det.get("seconds")
         hundredths = str(det.get("hundredths")).split(".")[1]
-
-        LOG.debug(
-            f"LON degress {degrees}  minutes {str(minutes)} "
-            "seconds {seconds} hundredths {hundredths} direction {direction}",
-        )
-
         lon = f"{degrees}{str(minutes)}.{hundredths}{direction}"
         return lon
 
@@ -309,8 +299,7 @@ class WeewxWXAPRSThread(threads.APRSDThread):
 
         return retn_value
 
-    def make_aprs_wx(self, wx_data):
-        # LOG.debug(wx_data)
+    def build_wx_packet(self, wx_data):
         wind_dir = float(wx_data.get("windDir", 0.00))
         wind_speed = float(wx_data.get("windSpeed_mph", 0.00))
         wind_gust = float(wx_data.get("windGust_mph", 0.00))
@@ -321,45 +310,27 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         humidity = float(wx_data.get("outHumidity", 0.00))
         # * 330.863886667
         pressure = float(wx_data.get("relbarometer", 0.00)) * 10
-        LOG.info(f"wind_dir {wind_dir}")
-        LOG.info(f"wind_speed {wind_speed}")
-        LOG.info(f"wind_gust {wind_gust}")
-        LOG.info(f"temperature {temperature}")
-        LOG.info(f"rain_last_hr {rain_last_hr}")
-        LOG.info(f"rain_last_24_hrs {rain_last_24_hrs}")
-        LOG.info(f"rain_since_midnight {rain_since_midnight}")
-        LOG.info(f"humidity {humidity}")
-        LOG.info(f"pressure {pressure}")
-
-        # Assemble the weather data of the APRS packet
-        return "{}/{}g{}t{}r{}p{}P{}h{}b{}".format(
-            self.str_or_dots(wind_dir, 3),
-            self.str_or_dots(wind_speed, 3),
-            self.str_or_dots(wind_gust, 3),
-            self.str_or_dots(temperature, 3),
-            self.str_or_dots(rain_last_hr, 3),
-            self.str_or_dots(rain_last_24_hrs, 3),
-            self.str_or_dots(rain_since_midnight, 3),
-            self.str_or_dots(humidity, 2),
-            self.str_or_dots(pressure, 5),
+        return aprsd.packets.WeatherPacket(
+            from_call=self.callsign,
+            to_call="APRS",
+            latitude=self.convert_latitude(float(self.latitude)),
+            longitude=self.convert_longitude(float(self.longitude)),
+            course=int(wind_dir),
+            speed=wind_speed,
+            wind_gust=wind_gust,
+            temperature=temperature,
+            rain_1h=rain_last_hr,
+            rain_24h=rain_last_24_hrs,
+            rain_since_midnight=rain_since_midnight,
+            humidity=int(round(humidity)),
+            pressure=pressure,
+            comment="APRSD WX http://pypi.org/project/aprsd",
         )
-
-    def build_packet(self, wx_data):
-        utc_datetime = datetime.datetime.now()
-        packet_data = "{}@{}z{}{}{}".format(
-            self.address,
-            utc_datetime.strftime("%d%H%M"),
-            self.position,
-            self.make_aprs_wx(wx_data),
-            "APRSD",
-        )
-
-        return packet_data
 
     def loop(self):
         now = datetime.datetime.now()
         delta = now - self.last_send
-        max_timeout = {"hours": 0.0, "minutes": 1, "seconds": 0}
+        max_timeout = {"hours": 0.0, "minutes": 5, "seconds": 0}
         max_delta = datetime.timedelta(**max_timeout)
         if delta >= max_delta:
             if not self.wx_queue.empty():
@@ -378,9 +349,7 @@ class WeewxWXAPRSThread(threads.APRSDThread):
 
             # we have Weather now, so lets format the data
             # and then send it out to APRS
-            raw_aprs_text = self.build_packet(wx)
-            packet = aprsd.messaging.RawMessage(raw_aprs_text)
-            LOG.debug(f"RAW WX Packet {packet}")
+            packet = self.build_wx_packet(wx)
             packet.retry_count = 1
             packet.send()
             self.last_send = datetime.datetime.now()
