@@ -8,6 +8,7 @@ import time
 import aprsd.messaging
 import paho.mqtt.client as mqtt
 from aprsd import plugin, threads
+from aprsd.threads import tx
 
 
 LOG = logging.getLogger("APRSD")
@@ -216,6 +217,7 @@ class WeewxMQTTThread(threads.APRSDThread):
         self.client.disconnect()
 
     def loop(self):
+        LOG.info("Loop")
         self.client.loop_forever()
         # self.client.loop(timeout=10, max_packets=10)
         return True
@@ -351,7 +353,7 @@ class WeewxWXAPRSThread(threads.APRSDThread):
             # and then send it out to APRS
             packet = self.build_wx_packet(wx)
             packet.retry_count = 1
-            packet.send()
+            tx.send(packet)
             self.last_send = datetime.datetime.now()
             time.sleep(1)
             return True
