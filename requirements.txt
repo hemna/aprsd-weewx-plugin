@@ -1,3 +1,4 @@
 pbr
-aprsd>=2.4.0
+aprsd>=3.0.0
 paho-mqtt
+oslo-config

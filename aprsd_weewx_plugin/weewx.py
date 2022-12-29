@@ -9,8 +9,12 @@ import aprsd.messaging
 import paho.mqtt.client as mqtt
 from aprsd import plugin, threads
 from aprsd.threads import tx
+from oslo_config import cfg
+
+from aprsd_weewx_plugin import conf  # noqa
 
 
+CONF = cfg.CONF
 LOG = logging.getLogger("APRSD")
 
 
@@ -41,13 +45,15 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
 
     def setup(self):
         """Ensure that the plugin has been configured."""
-        LOG.info("Looking for weewx.mqtt.host config entry")
-        if self.config.exists("services.weewx.mqtt.host"):
-            self.enabled = True
-        else:
-            LOG.error("Failed to find config weewx:mqtt:host")
-            LOG.info("Disabling the weewx mqtt subsription thread.")
+        self.enabled = True
+        if not CONF.aprsd_weewx_plugin.mqtt_host:
+            LOG.error("aprsd_weewx_plugin.mqtt_host is not set in config!")
             self.enabled = False
+
+        if not CONF.aprsd_weewx_plugin.mqtt_user:
+            LOG.warning("aprsd_weewx_plugin.mqtt_user is not set")
+        if not CONF.aprsd_weewx_plugin.mqtt_password:
+            LOG.warning("aprsd_weewx_plugin.mqtt_password is not set")
 
     def create_threads(self):
         if self.enabled:
@@ -55,7 +61,6 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
             self.queue = ClearableQueue(maxsize=1)
             self.wx_queue = ClearableQueue(maxsize=1)
             mqtt_thread = WeewxMQTTThread(
-                config=self.config,
                 wx_queue=self.wx_queue,
                 msg_queue=self.queue,
             )
@@ -65,19 +70,21 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
             # Then we can periodically report weather data
             # to APRS
             if (
-                self.config.exists("services.weewx.location.latitude") and
-                self.config.exists("services.weewx.location.longitude")
+                CONF.aprsd_weewx_plugin.latitude and
+                CONF.aprsd_weewx_plugin.longitude
             ):
                 LOG.info("Creating WeewxWXAPRSThread")
                 wx_thread = WeewxWXAPRSThread(
-                    config=self.config,
                     wx_queue=self.wx_queue,
                 )
                 threads.append(wx_thread)
             else:
                 LOG.info(
                     "NOT starting Weewx WX APRS Thread due to missing "
-                    "GPS location settings.",
+                    "GPS location settings.  Please set "
+                    "aprsd_weewx_plugin.latitude and "
+                    "aprsd_weewx_plugin.longitude to start reporting as an "
+                    "aprs weather station.",
                 )
 
             return threads
@@ -90,89 +97,87 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
         packet.get("message_text", None)
         # ack = packet.get("msgNo", "0")
 
-        if self.enabled:
-            # see if there are any weather messages in the queue.
-            msg = None
-            LOG.info("Looking for a message")
-            if not self.queue.empty():
-                msg = self.queue.get(timeout=1)
-            else:
-                try:
-                    msg = self.queue.get(timeout=30)
-                except Exception:
-                    return "No Weewx Data"
-
-            if not msg:
-                return "No Weewx data"
-            else:
-                LOG.info(f"Got a message {msg}")
-                # Wants format of 71.5F/54.0F Wind 1@49G7 54%
-                if "outTemp_F" in msg:
-                    temperature = "{:0.2f}F".format(float(msg["outTemp_F"]))
-                    dewpoint = "{:0.2f}F".format(float(msg["dewpoint_F"]))
-                else:
-                    temperature = "{:0.2f}C".format(float(msg["outTemp_C"]))
-                    dewpoint = "{:0.2f}C".format(float(msg["dewpoint_C"]))
-
-                wind_direction = "{:0.0f}".format(float(msg.get("windDir", 0)))
-                LOG.info(f"wind direction {wind_direction}")
-                if "windSpeed_mps" in msg:
-                    wind_speed = "{:0.0f}".format(float(msg["windSpeed_mps"]))
-                    wind_gust = "{:0.0f}".format(float(msg["windGust_mps"]))
-                else:
-                    wind_speed = "{:0.0f}".format(float(msg["windSpeed_mph"]))
-                    wind_gust = "{:0.0f}".format(float(msg["windGust_mph"]))
-
-                wind = "{}@{}G{}".format(
-                    wind_speed,
-                    wind_direction,
-                    wind_gust,
-                )
-
-                humidity = "{:0.0f}%".format(float(msg["outHumidity"]))
-
-                ts = int("{:0.0f}".format(float(msg["dateTime"])))
-                ts = datetime.datetime.fromtimestamp(ts)
-
-                # do rain in format of last hour/day/month/year
-
-                rain = "RA {:.2f} {:.2f}/hr".format(
-                    float(msg.get("dayRain_in", 0.00)),
-                    float(msg.get("rainRate_inch_per_hour", 0.00)),
-                )
-
-                wx = "WX: {}/{} Wind {} {} {} {:.2f}inHg".format(
-                    temperature,
-                    dewpoint,
-                    wind,
-                    humidity,
-                    rain,
-                    float(msg.get("pressure_inHg", 0.00)),
-                )
-                LOG.debug(
-                    "Got weather {} -- len {}".format(
-                        wx,
-                        len(wx),
-                    ),
-                )
-                return wx
-
+        # see if there are any weather messages in the queue.
+        msg = None
+        LOG.info("Looking for a message")
+        if not self.queue.empty():
+            msg = self.queue.get(timeout=1)
         else:
-            return "WeewxMQTT Not enabled"
+            try:
+                msg = self.queue.get(timeout=30)
+            except Exception:
+                return "No Weewx Data"
+
+        if not msg:
+            return "No Weewx data"
+        else:
+            LOG.info(f"Got a message {msg}")
+            # Wants format of 71.5F/54.0F Wind 1@49G7 54%
+            if "outTemp_F" in msg:
+                temperature = "{:0.2f}F".format(float(msg["outTemp_F"]))
+                dewpoint = "{:0.2f}F".format(float(msg["dewpoint_F"]))
+            else:
+                temperature = "{:0.2f}C".format(float(msg["outTemp_C"]))
+                dewpoint = "{:0.2f}C".format(float(msg["dewpoint_C"]))
+
+            wind_direction = "{:0.0f}".format(float(msg.get("windDir", 0)))
+            LOG.info(f"wind direction {wind_direction}")
+            if "windSpeed_mps" in msg:
+                wind_speed = "{:0.0f}".format(float(msg["windSpeed_mps"]))
+                wind_gust = "{:0.0f}".format(float(msg["windGust_mps"]))
+            else:
+                wind_speed = "{:0.0f}".format(float(msg["windSpeed_mph"]))
+                wind_gust = "{:0.0f}".format(float(msg["windGust_mph"]))
+
+            wind = "{}@{}G{}".format(
+                wind_speed,
+                wind_direction,
+                wind_gust,
+            )
+
+            humidity = "{:0.0f}%".format(float(msg["outHumidity"]))
+
+            ts = int("{:0.0f}".format(float(msg["dateTime"])))
+            ts = datetime.datetime.fromtimestamp(ts)
+
+            # do rain in format of last hour/day/month/year
+
+            rain = "RA {:.2f} {:.2f}/hr".format(
+                float(msg.get("dayRain_in", 0.00)),
+                float(msg.get("rainRate_inch_per_hour", 0.00)),
+            )
+
+            wx = "WX: {}/{} Wind {} {} {} {:.2f}inHg".format(
+                temperature,
+                dewpoint,
+                wind,
+                humidity,
+                rain,
+                float(msg.get("pressure_inHg", 0.00)),
+            )
+            LOG.debug(
+                "Got weather {} -- len {}".format(
+                    wx,
+                    len(wx),
+                ),
+            )
+            return wx
 
 
 class WeewxMQTTThread(threads.APRSDThread):
-    def __init__(self, config, wx_queue, msg_queue):
+    _mqtt_host = None
+    _mqtt_port = None
+    client = None
+    def __init__(self, wx_queue, msg_queue):
         super().__init__("WeewxMQTTThread")
-        self.config = config
         self.msg_queue = msg_queue
         self.wx_queue = wx_queue
         self.setup()
 
     def setup(self):
         LOG.info("Creating mqtt client")
-        self._mqtt_host = self.config["services"]["weewx"]["mqtt"]["host"]
-        self._mqtt_port = self.config["services"]["weewx"]["mqtt"]["port"]
+        self._mqtt_host = CONF.aprsd_weewx_plugin.mqtt_host
+        self._mqtt_port = CONF.aprsd_weewx_plugin.mqtt_port
         LOG.info(
             "Connecting to mqtt {}:{}".format(
                 self._mqtt_host,
@@ -183,9 +188,9 @@ class WeewxMQTTThread(threads.APRSDThread):
         self.client.on_connect = self.on_connect
         self.client.on_message = self.on_message
         self.client.connect(self._mqtt_host, self._mqtt_port, 60)
-        if self.config.exists("services.weewx.mqtt.user"):
-            username = self.config.get("services.weewx.mqtt.user")
-            password = self.config.get("services.weewx.mqtt.password")
+        if CONF.aprsd_weewx_plugin.mqtt_user:
+            username = CONF.aprsd_weewx_plugin.mqtt_user
+            password = CONF.aprsd_weewx_plugin.mqtt_password
             LOG.info(f"Using MQTT username/password {username}/XXXXXX")
             self.client.username_pw_set(
                 username=username,
@@ -224,13 +229,13 @@ class WeewxMQTTThread(threads.APRSDThread):
 
 
 class WeewxWXAPRSThread(threads.APRSDThread):
-    def __init__(self, config,  wx_queue):
+    def __init__(self, wx_queue):
         super().__init__(self.__class__.__name__)
-        self.config = config
         self.wx_queue = wx_queue
-        self.latitude = self.config.get("services.weewx.location.latitude")
-        self.longitude = self.config.get("services.weewx.location.longitude")
-        self.callsign = self.config.get("aprsd.callsign")
+        self.latitude = CONF.aprsd_weewx_plugin.latitude
+        self.longitude = CONF.aprsd_weewx_plugin.longitude
+        self.callsign = CONF.callsign
+        self.report_interval = CONF.aprsd_weewx_plugin.report_interval
         self.last_send = datetime.datetime.now()
 
         if self.latitude and self.longitude:
@@ -332,7 +337,7 @@ class WeewxWXAPRSThread(threads.APRSDThread):
     def loop(self):
         now = datetime.datetime.now()
         delta = now - self.last_send
-        max_timeout = {"hours": 0.0, "minutes": 5, "seconds": 0}
+        max_timeout = {"seconds": self.report_interval}
         max_delta = datetime.timedelta(**max_timeout)
         if delta >= max_delta:
             if not self.wx_queue.empty():
