@@ -168,6 +168,7 @@ class WeewxMQTTThread(threads.APRSDThread):
     _mqtt_host = None
     _mqtt_port = None
     client = None
+
     def __init__(self, wx_queue, msg_queue):
         super().__init__("WeewxMQTTThread")
         self.msg_queue = msg_queue
