@@ -207,6 +207,7 @@ class WeewxMQTTThread(threads.APRSDThread):
     def on_message(self, client, userdata, msg):
         wx_data = json.loads(msg.payload)
         LOG.debug("Got WX data")
+        LOG.debug(wx_data)
         # Make sure we have only 1 item in the queue
         if self.msg_queue.qsize() >= 1:
             self.msg_queue.clear()
@@ -317,7 +318,8 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         rain_since_midnight = float(wx_data.get("day_Rain_in", 0.00))
         humidity = float(wx_data.get("outHumidity", 0.00))
         # * 330.863886667
-        pressure = float(wx_data.get("relbarometer", 0.00)) * 10
+        # inHg * 33.8639 = mBar
+        pressure = float(wx_data.get("pressure_inHg", 0.00)) * 33.8639
         return aprsd.packets.WeatherPacket(
             from_call=self.callsign,
             to_call="APRS",
