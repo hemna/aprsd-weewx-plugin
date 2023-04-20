@@ -1,9 +1,15 @@
 CHANGES
 =======
 
+v0.3.0
+------
+
+* Take the pressure from pressure\_inHg
+
 v0.2.0
 ------
 
+* update for 0.2.0
 * Fixed pep8 failures
 * Update to aprsd 3.0.0 and include config options!
 * don't dump the whole packet
