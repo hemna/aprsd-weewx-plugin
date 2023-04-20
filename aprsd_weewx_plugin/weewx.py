@@ -317,8 +317,9 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         rain_last_24_hrs = float(wx_data.get("rain24_in", 0.00))
         rain_since_midnight = float(wx_data.get("day_Rain_in", 0.00))
         humidity = float(wx_data.get("outHumidity", 0.00))
-        # inHg * 330.863886667 = mBar
-        pressure = float(wx_data.get("pressure_inHg", 0.00)) * 330.863886667
+        # * 330.863886667
+        # inHg * 33.8639 = mBar
+        pressure = float(wx_data.get("pressure_inHg", 0.00)) * 33.8639 * 10
         return aprsd.packets.WeatherPacket(
             from_call=self.callsign,
             to_call="APRS",
