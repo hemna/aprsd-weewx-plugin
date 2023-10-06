@@ -207,7 +207,6 @@ class WeewxMQTTThread(threads.APRSDThread):
     def on_message(self, client, userdata, msg):
         wx_data = json.loads(msg.payload)
         LOG.debug("Got WX data")
-        LOG.debug(wx_data)
         # Make sure we have only 1 item in the queue
         if self.msg_queue.qsize() >= 1:
             self.msg_queue.clear()
