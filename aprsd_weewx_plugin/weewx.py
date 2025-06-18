@@ -5,10 +5,10 @@ import logging
 import queue
 import time
 
-import aprsd.messaging
 import paho.mqtt.client as mqtt
 from aprsd import plugin, threads
 from aprsd.threads import tx
+from aprsd.packets import core
 from oslo_config import cfg
 
 from aprsd_weewx_plugin import conf  # noqa
@@ -187,6 +187,7 @@ class WeewxMQTTThread(threads.APRSDThread):
         )
         self.client = mqtt.Client(client_id="WeewxMQTTPlugin")
         self.client.on_connect = self.on_connect
+        self.client.on_disconnect = self.on_disconnect
         self.client.on_message = self.on_message
         self.client.connect(self._mqtt_host, self._mqtt_port, 60)
         if CONF.aprsd_weewx_plugin.mqtt_user:
@@ -203,6 +204,9 @@ class WeewxMQTTThread(threads.APRSDThread):
     def on_connect(self, client, userdata, flags, rc):
         LOG.info(f"Connected to MQTT {self._mqtt_host} ({rc})")
         client.subscribe("weather/loop")
+
+    def on_disconnect(self, client, userdata, rc):
+        LOG.info(f"Disconnected from MQTT {self._mqtt_host} ({rc})")
 
     def on_message(self, client, userdata, msg):
         wx_data = json.loads(msg.payload)
@@ -319,7 +323,7 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         # * 330.863886667
         # inHg * 33.8639 = mBar
         pressure = float(wx_data.get("pressure_inHg", 0.00)) * 33.8639 * 10
-        return aprsd.packets.WeatherPacket(
+        return core.WeatherPacket(
             from_call=self.callsign,
             to_call="APRS",
             latitude=self.convert_latitude(float(self.latitude)),
