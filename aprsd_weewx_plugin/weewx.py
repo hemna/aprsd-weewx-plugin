@@ -337,7 +337,7 @@ class WeewxWXAPRSThread(threads.APRSDThread):
             rain_since_midnight=rain_since_midnight,
             humidity=int(round(humidity)),
             pressure=pressure,
-            comment="APRSD WX",
+            comment="APRSD WX http://pypi.org/project/aprsd",
         )
 
     def loop(self):
