@@ -1,0 +1,74 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "pbr"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aprsd_weewx_plugin"
+dynamic = ["version"]
+description = "HAM Radio APRSD that reports weather from a weewx weather station."
+readme = "README.rst"
+requires-python = ">=3.11"
+license = {text = "GPL-3.0"}
+authors = [
+    {name = "Walter A. Boring IV", email = "waboring@hemna.com"}
+]
+classifiers = [
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Topic :: Communications :: Ham Radio",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "pbr",
+    "aprsd>=3.0.0",
+    "paho-mqtt",
+    "oslo-config",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pip",
+    "pip-tools",
+    "bump2version",
+    "wheel",
+    "watchdog",
+    "ruff",
+    "tox",
+    "tox-uv",
+    "coverage",
+    "Sphinx",
+    "twine",
+    "pytest",
+    "uv",
+]
+
+[project.entry-points."oslo.config.opts"]
+   "aprsd_weewx_plugin.conf" = "aprsd_weewx_plugin.conf.opts:list_opts"
+
+[tool.setuptools]
+packages = ["aprsd_weewx_plugin"]
+
+[tool.setuptools.package-data]
+"*" = ["LICENSE"]
+
+[tool.setuptools.dynamic]
+# Version is provided by pbr via setup hooks
+# PBR will set __version__ in aprsd_weewx_plugin.__init__ during setup
+version = {attr = "aprsd_weewx_plugin.__version__"}
+
+[tool.pbr]
+# PBR configuration - version is managed by pbr from git tags
+# PBR uses setup hooks to inject version dynamically
+
+[tool.ruff]
+line-length = 99
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+ignore = ["E203"]  # Ignore whitespace before ':' (required by formatter)
+
+[tool.mypy]
+ignore_missing_imports = true
+strict = true

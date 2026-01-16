@@ -1,6 +1,5 @@
 from oslo_config import cfg
 
-
 weewx_group = cfg.OptGroup(
     name="aprsd_weewx_plugin",
     title="APRSD Weewx Plugin settings",
@@ -44,10 +43,7 @@ weewx_mqtt_opts = [
     ),
 ]
 
-ALL_OPTS = (
-    weewx_opts +
-    weewx_mqtt_opts
-)
+ALL_OPTS = weewx_opts + weewx_mqtt_opts
 
 
 def register_opts(cfg):

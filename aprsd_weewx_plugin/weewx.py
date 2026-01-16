@@ -1,4 +1,5 @@
 """Main module."""
+
 import datetime
 import json
 import logging
@@ -7,19 +8,17 @@ import time
 
 import paho.mqtt.client as mqtt
 from aprsd import plugin, threads
-from aprsd.threads import tx
 from aprsd.packets import core
+from aprsd.threads import tx
 from oslo_config import cfg
 
 from aprsd_weewx_plugin import conf  # noqa
-
 
 CONF = cfg.CONF
 LOG = logging.getLogger("APRSD")
 
 
 class ClearableQueue(queue.Queue):
-
     def clear(self):
         try:
             while True:
@@ -69,10 +68,7 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
             # if we have position and a callsign to report
             # Then we can periodically report weather data
             # to APRS
-            if (
-                CONF.aprsd_weewx_plugin.latitude and
-                CONF.aprsd_weewx_plugin.longitude
-            ):
+            if CONF.aprsd_weewx_plugin.latitude and CONF.aprsd_weewx_plugin.longitude:
                 LOG.info("Creating WeewxWXAPRSThread")
                 wx_thread = WeewxWXAPRSThread(
                     wx_queue=self.wx_queue,
@@ -219,7 +215,7 @@ class WeewxMQTTThread(threads.APRSDThread):
         self.wx_queue.put(wx_data)
 
     def stop(self):
-        LOG.info(__class__.__name__+" Stop")
+        LOG.info(__class__.__name__ + " Stop")
         self.thread_stop = True
         LOG.info("Stopping loop")
         self.client.loop_stop()
@@ -263,7 +259,9 @@ class WeewxWXAPRSThread(threads.APRSDThread):
         hundredths = round(seconds / 60, 2)
 
         return {
-            "degrees": degrees, "minutes": minutes, "seconds": seconds,
+            "degrees": degrees,
+            "minutes": minutes,
+            "seconds": seconds,
             "hundredths": hundredths,
         }
 
