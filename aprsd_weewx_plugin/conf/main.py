@@ -6,11 +6,6 @@ weewx_group = cfg.OptGroup(
 )
 
 weewx_opts = [
-    cfg.BoolOpt(
-        "enabled",
-        default=False,
-        help="Enable the plugin?",
-    ),
     cfg.FloatOpt(
         "latitude",
         default=None,

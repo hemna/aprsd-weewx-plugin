@@ -44,7 +44,7 @@ class WeewxMQTTPlugin(plugin.APRSDRegexCommandPluginBase):
 
     def setup(self):
         """Ensure that the plugin has been configured."""
-        self.enabled = True
+        self.enabled = CONF.aprsd_weewx_plugin.enabled
         if not CONF.aprsd_weewx_plugin.mqtt_host:
             LOG.error("aprsd_weewx_plugin.mqtt_host is not set in config!")
             self.enabled = False
