@@ -46,6 +46,9 @@ dev = [
 [project.entry-points."oslo.config.opts"]
    "aprsd_weewx_plugin.conf" = "aprsd_weewx_plugin.conf.opts:list_opts"
 
+[project.scripts]
+    "aprsd-weewx-plugin-export-config" = "aprsd_weewx_plugin.cli:main"
+
 [tool.setuptools]
 packages = ["aprsd_weewx_plugin"]
 
