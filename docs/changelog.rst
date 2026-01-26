@@ -1,0 +1,39 @@
+CHANGES
+=======
+
+v0.3.2
+------
+
+* another try
+
+v0.3.1
+------
+
+* Updated pressure \* 10
+
+v0.3.0
+------
+
+* Take the pressure from pressure\_inHg
+
+v0.2.0
+------
+
+* update for 0.2.0
+* Fixed pep8 failures
+* Update to aprsd 3.0.0 and include config options!
+* don't dump the whole packet
+* use Tx to send
+* Working with pre 2.7.0
+* Removed trace
+* lint
+* Added pbr version
+* Fixed missing entry in requirements.txt
+* Create FUNDING.yml
+
+v0.1.2
+------
+
+* Fixed README.rst formatting
+* Updated from first repo
+* Initial commit

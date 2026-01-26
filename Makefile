@@ -17,7 +17,7 @@ help:	# Help for the Makefile
 dev: venv  ## Create the virtualenv with all the requirements installed
 
 docs: build
-	cp README.rst docs/readme.rst
+	cp README.md docs/readme.rst
 	cp Changelog docs/changelog.rst
 	tox -edocs
 
